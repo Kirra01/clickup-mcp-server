@@ -6,7 +6,7 @@
         "/home/nazruden/Projects/MCP/clickup-mcp-server/dist/index.js"
       ],
       "env": {
-        "CLICKUP_PERSONAL_TOKEN": "REDACTED_CLICKUP_TOKEN"
+        "CLICKUP_PERSONAL_TOKEN": "your_clickup_personal_token"
       }
     }
   }
