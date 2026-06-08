@@ -6,6 +6,7 @@ import axios, {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from "axios";
+import { HttpsProxyAgent } from "https-proxy-agent";
 // Encryption is optional now, only if we want to encrypt the token at rest (less critical than OAuth tokens)
 // import { encrypt, decrypt } from "../security.js";
 import { logger } from "../logger.js";
@@ -85,13 +86,33 @@ export class ClickUpService {
       );
     }
 
+    // Optional outbound proxy. In networks where api.clickup.com is subject to
+    // DNS pollution, resolving the hostname locally yields a hijacked IP. Routing
+    // requests through a CONNECT proxy lets the proxy resolve the hostname from a
+    // clean vantage point, bypassing local DNS interference entirely.
+    const proxyUrl =
+      process.env.CLICKUP_HTTPS_PROXY ||
+      process.env.HTTPS_PROXY ||
+      process.env.https_proxy ||
+      "";
+
     this.client = axios.create({
       // Use the specific API URL from the refactored config
       baseURL: config.clickUpApiUrl,
       headers: {
         "Content-Type": "application/json",
       },
+      // When a proxy is configured, force a CONNECT tunnel via httpsAgent and
+      // disable axios' built-in env-proxy handling (which resolves DNS locally
+      // and would defeat the purpose). Without a proxy, behavior is unchanged.
+      ...(proxyUrl
+        ? { httpsAgent: new HttpsProxyAgent(proxyUrl), proxy: false as const }
+        : {}),
     });
+
+    if (proxyUrl) {
+      logger.info(`ClickUp requests routed through proxy: ${proxyUrl}`);
+    }
 
     // Add REQUEST interceptor for Authorization header
     this.client.interceptors.request.use(
