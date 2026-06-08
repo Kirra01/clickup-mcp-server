@@ -8,6 +8,7 @@ import {
   CreateDocPageParams,
   GetDocPageContentParams,
   EditDocPageContentParams,
+  ReplaceInDocPageParams,
 } from "../types.js";
 import { ClickUpService } from "../services/clickup.service.js";
 import { logger } from "../logger.js";
@@ -296,6 +297,61 @@ export const editDocPageContentTool: Tool = {
   },
 };
 
+export const replaceInDocPageTool: Tool = {
+  name: "clickup_replace_in_doc_page",
+  description:
+    "Performs a partial (local) edit of a Doc page by replacing an exact text fragment, leaving the rest of the page untouched. The server reads the current content, replaces old_string with new_string, and writes the merged result back. Prefer this over clickup_edit_doc_page_content when you only want to change part of a page.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      workspace_id: {
+        type: "string",
+        description: "The ID of the Workspace (Team ID) where the Doc resides.",
+      },
+      doc_id: {
+        type: "string",
+        description: "The ID of the Doc containing the page.",
+      },
+      page_id: { type: "string", description: "The ID of the page to update." },
+      old_string: {
+        type: "string",
+        description:
+          "The exact existing text to replace. Must match the current page content verbatim (including whitespace). Unless replace_all is true, it must match exactly once — include enough surrounding context to be unique.",
+      },
+      new_string: {
+        type: "string",
+        description:
+          "The replacement text. Use an empty string to delete the matched text. Must differ from old_string.",
+      },
+      replace_all: {
+        type: "boolean",
+        description:
+          "Optional: replace every occurrence of old_string instead of requiring a single unique match (default: false).",
+      },
+      content_format: {
+        type: "string",
+        description:
+          "Optional: format used for both reading and writing the content (e.g., 'text/md', default: text/md).",
+      },
+    },
+    required: ["workspace_id", "doc_id", "page_id", "old_string", "new_string"],
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      page: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+        },
+      },
+      success: { type: "boolean" },
+    },
+    description: "An object containing the updated page object and success status.",
+  },
+};
+
 // Handler Functions
 export async function handleSearchDocs(
   clickUpService: ClickUpService,
@@ -498,6 +554,55 @@ export async function handleEditDocPageContent(
   }
 }
 
+export async function handleReplaceInDocPage(
+  clickUpService: ClickUpService,
+  args: Record<string, unknown>,
+) {
+  const params = args as unknown as ReplaceInDocPageParams;
+  if (!params.workspace_id || typeof params.workspace_id !== "string") {
+    throw new Error("Workspace ID is required for replaceInDocPage tool.");
+  }
+  if (!params.doc_id || typeof params.doc_id !== "string") {
+    throw new Error("Doc ID is required for replaceInDocPage tool.");
+  }
+  if (!params.page_id || typeof params.page_id !== "string") {
+    throw new Error("Page ID is required.");
+  }
+  if (!params.old_string || typeof params.old_string !== "string") {
+    throw new Error("old_string is required and must be a non-empty string.");
+  }
+  if (typeof params.new_string !== "string") {
+    throw new Error("new_string is required (use an empty string to delete).");
+  }
+  logger.info(
+    `Handling tool call: ${replaceInDocPageTool.name} for page ${params.page_id} in doc ${params.doc_id}, workspace ${params.workspace_id}`,
+  );
+  try {
+    const updatedPage =
+      await clickUpService.docService.replaceInDocPage(params);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Successfully replaced text in page ${params.page_id}.`,
+        },
+      ],
+      structuredContent: {
+        page: {
+          id: params.page_id,
+          name: updatedPage?.title ?? "Updated Page",
+        },
+        success: true,
+      },
+    };
+  } catch (error) {
+    logger.error(`Error in ${replaceInDocPageTool.name}:`, error);
+    throw error instanceof Error
+      ? error
+      : new Error("Failed to replace text in doc page");
+  }
+}
+
 export const docTools = [
   searchDocsTool,
   createDocTool,
@@ -505,4 +610,5 @@ export const docTools = [
   createDocPageTool,
   getDocPageContentTool,
   editDocPageContentTool,
+  replaceInDocPageTool,
 ];

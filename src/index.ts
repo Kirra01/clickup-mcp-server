@@ -82,12 +82,14 @@ import {
   createDocPageTool,
   getDocPageContentTool,
   editDocPageContentTool,
+  replaceInDocPageTool,
   handleSearchDocs,
   handleCreateDoc,
   handleGetDocPages,
   handleCreateDocPage,
   handleGetDocPageContent,
   handleEditDocPageContent,
+  handleReplaceInDocPage,
 } from "./tools/doc.tools.js";
 import {
   getViewsTool,
@@ -158,6 +160,7 @@ async function main() {
           createDocPageTool,
           getDocPageContentTool,
           editDocPageContentTool,
+          replaceInDocPageTool,
           getViewsTool,
           createViewTool,
           getViewDetailsTool,
@@ -242,6 +245,8 @@ async function main() {
               return await handleGetDocPageContent(clickUpService, args);
             case editDocPageContentTool.name:
               return await handleEditDocPageContent(clickUpService, args);
+            case replaceInDocPageTool.name:
+              return await handleReplaceInDocPage(clickUpService, args);
             case getViewsTool.name:
               return await handleGetViews(clickUpService, args);
             case createViewTool.name:

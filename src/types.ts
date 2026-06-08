@@ -473,6 +473,16 @@ export interface EditDocPageContentParams {
   content_format?: string; // Optional: As per v3 spec (defaults to text/md)
 }
 
+export interface ReplaceInDocPageParams {
+  workspace_id: string; // Required for v3 endpoint path
+  doc_id: string; // Required for v3 endpoint path
+  page_id: string;
+  old_string: string; // Exact text fragment to find in the current page content
+  new_string: string; // Text that replaces old_string
+  replace_all?: boolean; // Optional: replace every occurrence (default: false = require a unique match)
+  content_format?: string; // Optional: format used for both reading and writing (defaults to text/md)
+}
+
 // +++ View Types +++
 export type ClickUpViewParentType = "team" | "space" | "folder" | "list"; // Enum for parent type strings used in handlers
 export type ClickUpViewType = "list" | "board" | "calendar" | "gantt"; // Supported view types

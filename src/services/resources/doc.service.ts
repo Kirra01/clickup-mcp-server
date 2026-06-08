@@ -9,6 +9,7 @@ import {
   CreateDocPageParams,
   GetDocPageContentParams,
   EditDocPageContentParams,
+  ReplaceInDocPageParams,
 } from "../../types.js";
 
 export class DocService {
@@ -488,5 +489,75 @@ export class DocService {
         `Failed to edit content for ${errorScope} in ClickUp (v3 attempt)`,
       );
     }
+  }
+
+  /**
+   * Performs a partial (local) edit of a Doc page by replacing an exact text
+   * fragment, working around ClickUp's API which only supports whole-page
+   * replace / append / prepend. Strategy: read current content, apply the
+   * replacement in memory, then write the merged content back with
+   * content_edit_mode = "replace".
+   */
+  async replaceInDocPage(
+    params: ReplaceInDocPageParams,
+  ): Promise<ClickUpDocPage> {
+    const {
+      workspace_id,
+      doc_id,
+      page_id,
+      old_string,
+      new_string,
+      replace_all,
+      content_format,
+    } = params;
+
+    if (old_string === undefined || old_string === "") {
+      throw new Error("old_string is required and must be non-empty.");
+    }
+    if (new_string === undefined) {
+      throw new Error("new_string is required (use an empty string to delete).");
+    }
+    if (old_string === new_string) {
+      throw new Error("old_string and new_string must be different.");
+    }
+
+    const errorScope = `page ${page_id} (doc: ${doc_id}, ws: ${workspace_id})`;
+    logger.debug(`Replacing text in ${errorScope} (replace_all=${!!replace_all})`);
+
+    // 1. Read current content (reuses validation in getDocPageContent).
+    const current = await this.getDocPageContent({
+      workspace_id,
+      doc_id,
+      page_id,
+      content_format,
+    });
+
+    // 2. Verify the match is unambiguous before mutating anything.
+    const occurrences = current.split(old_string).length - 1;
+    if (occurrences === 0) {
+      throw new Error(
+        `old_string was not found in ${errorScope}. The page content may have changed; re-read it and retry.`,
+      );
+    }
+    if (occurrences > 1 && !replace_all) {
+      throw new Error(
+        `old_string matched ${occurrences} times in ${errorScope}. Provide more surrounding context to make it unique, or set replace_all=true.`,
+      );
+    }
+
+    // 3. Apply the replacement locally.
+    const next = replace_all
+      ? current.split(old_string).join(new_string)
+      : current.replace(old_string, new_string);
+
+    // 4. Write the full merged content back as a whole-page replace.
+    return this.editDocPageContent({
+      workspace_id,
+      doc_id,
+      page_id,
+      content: next,
+      content_edit_mode: "replace",
+      content_format,
+    });
   }
 }
