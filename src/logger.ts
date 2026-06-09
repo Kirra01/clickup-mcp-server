@@ -1,52 +1,39 @@
-import { config } from "./config/app.config.js";
+import { config } from "./config.js";
+
+const LEVELS: Record<string, number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  debug: 3,
+};
 
 class Logger {
-  private logLevel: string;
+  private threshold: number;
 
   constructor() {
-    this.logLevel = config.server.logLevel;
+    // Fall back to "info" when LOG_LEVEL is unset or invalid, instead of
+    // silently disabling all logging (the old NaN comparison did the latter).
+    this.threshold = LEVELS[config.logLevel] ?? LEVELS.info;
   }
 
-  private getTimestamp(): string {
-    return new Date().toISOString();
+  private write(level: keyof typeof LEVELS, message: string, args: unknown[]) {
+    if (LEVELS[level] > this.threshold) return;
+    // Everything goes to stderr: stdout is reserved for the MCP stdio protocol.
+    const line = `[${new Date().toISOString()}] ${level.toUpperCase()}: ${message}`;
+    console.error(line, ...args);
   }
 
-  private shouldLog(level: string): boolean {
-    const levels = {
-      error: 0,
-      warn: 1,
-      info: 2,
-      debug: 3,
-    };
-
-    return (
-      levels[level as keyof typeof levels] <=
-      levels[this.logLevel as keyof typeof levels]
-    );
+  error(message: string, ...args: unknown[]): void {
+    this.write("error", message, args);
   }
-
-  error(message: string, ...args: any[]): void {
-    if (this.shouldLog("error")) {
-      console.error(`[${this.getTimestamp()}] ERROR: ${message}`, ...args);
-    }
+  warn(message: string, ...args: unknown[]): void {
+    this.write("warn", message, args);
   }
-
-  warn(message: string, ...args: any[]): void {
-    if (this.shouldLog("warn")) {
-      console.warn(`[${this.getTimestamp()}] WARN: ${message}`, ...args);
-    }
+  info(message: string, ...args: unknown[]): void {
+    this.write("info", message, args);
   }
-
-  info(message: string, ...args: any[]): void {
-    if (this.shouldLog("info")) {
-      console.error(`[${this.getTimestamp()}] INFO: ${message}`, ...args);
-    }
-  }
-
-  debug(message: string, ...args: any[]): void {
-    if (this.shouldLog("debug")) {
-      console.error(`[${this.getTimestamp()}] DEBUG: ${message}`, ...args);
-    }
+  debug(message: string, ...args: unknown[]): void {
+    this.write("debug", message, args);
   }
 }
 

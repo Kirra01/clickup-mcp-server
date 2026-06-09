@@ -1,8 +1,8 @@
 {
   "name": "@nazruden/clickup-server",
-  "version": "1.1.5",
+  "version": "2.0.0",
   "description": "ClickUp MCP Server for LLM integration",
-  "main": "dist/server.js",
+  "main": "dist/index.js",
   "bin": {
     "clickup-server": "dist/index.js"
   },
@@ -15,9 +15,6 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:integration": "npm run build && jest --testPathPattern=__integration__",
-    "test:integration:watch": "jest --testPathPattern=__integration__ --watch",
-    "test:unit": "jest --testPathPattern=__tests__ --testPathIgnorePatterns=__integration__",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -58,22 +55,17 @@
     "axios": "^1.11.0",
     "cross-env": "^10.0.0",
     "dotenv": "^17.2.1",
-    "express": "^5.1.0",
     "https-proxy-agent": "^9.1.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.1.0",
-    "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "add-js-extension": "^1.0.4",
     "eslint": "^8.57.1",
     "jest": "^29.7.0",
-    "open": "^10.2.0",
     "prettier": "^3.6.2",
-    "supertest": "^7.1.4",
     "ts-jest": "^29.1.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
@@ -83,13 +75,11 @@
   },
   "mcp": {
     "type": "server",
-    "configFile": "src/mcp-config.ts",
     "commands": {
       "start": "npm start",
       "dev": "npm run dev"
     },
     "capabilities": [
-      "oauth",
       "api-integration",
       "rate-limiting"
     ]
